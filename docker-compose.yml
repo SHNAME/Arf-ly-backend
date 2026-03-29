@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    container_name: my-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}      # DB 계정
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # DB 비밀번호
+      POSTGRES_DB: ${DB_NAME}         # 사용할 데이터베이스 이름
+      TZ: Asia/Seoul
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # 데이터 영속성 보장
+
+volumes:
+  postgres_data:

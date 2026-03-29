@@ -1,0 +1,46 @@
+package com.capstone.arfly.pet.domain;
+
+import com.capstone.arfly.common.domain.BaseTimeEntity;
+import com.capstone.arfly.member.domain.Member;
+import com.capstone.arfly.common.domain.File;
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Pet extends BaseTimeEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member member;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "breeds_id", nullable = false)
+    private Breeds breeds;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "file_id")
+    private File profileImage;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Species species;
+
+    @Column(nullable = false)
+    private Boolean neutered;
+
+    @Column(nullable = false)
+    private Integer birth;
+
+    private Double weight;
+}
