@@ -51,8 +51,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}   # EC2 사용자 이름
           key: ${{ secrets.EC2_SSH_KEY }}      # EC2 접속용 .pem 키 값
           script: |
-            sudo docker compose -f docker-compose.prod.yml pull
-            sudo docker compose -f docker-compose.prod.yml stop arfly-server
-            sudo docker compose -f docker-compose.prod.yml rm -f arfly-server
-            sudo docker compose -f docker-compose.prod.yml up -d
+            sudo docker-compose -f docker-compose.prod.yml pull
+            sudo docker-compose -f docker-compose.prod.yml down
+            sudo docker-compose -f docker-compose.prod.yml up -d
             sudo docker image prune -f
