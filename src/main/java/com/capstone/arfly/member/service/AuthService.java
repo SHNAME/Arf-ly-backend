@@ -1,11 +1,13 @@
 package com.capstone.arfly.member.service;
 
 import com.capstone.arfly.common.auth.JwtTokenUtil;
+import com.capstone.arfly.common.exception.InvalidCredentialsException;
 import com.capstone.arfly.common.exception.UserAlreadyExistsException;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.domain.Terms;
 import com.capstone.arfly.member.domain.UserTermsAgreement;
 import com.capstone.arfly.member.dto.MemberCreateDto;
+import com.capstone.arfly.member.dto.MemberLoginDto;
 import com.capstone.arfly.member.dto.TokenResponseDto;
 import com.capstone.arfly.member.dto.UserAgreementDto;
 import com.capstone.arfly.member.repository.MemberRepository;
@@ -13,6 +15,7 @@ import com.capstone.arfly.member.repository.TermsRepository;
 import com.capstone.arfly.member.repository.UserTermsAgreementRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -91,6 +94,21 @@ public class AuthService {
         TokenResponseDto response = TokenResponseDto.builder().accessToken(accessToken)
                 .refreshToken(refreshToken).build();
         return response;
+    }
+
+    public Member login(MemberLoginDto memberLoginDto) {
+        //ID 확인
+        Optional<Member> optMember = memberRepository.findByUserId(memberLoginDto.getUserId());
+        if (optMember.isEmpty()) {
+            throw new InvalidCredentialsException();
+        }
+        Member member = optMember.get();
+
+        //패스워드 검증
+        if (!passwordEncoder.matches(memberLoginDto.getPassword(), member.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
+        return member;
     }
 
 

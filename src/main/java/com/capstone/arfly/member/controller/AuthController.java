@@ -3,6 +3,7 @@ package com.capstone.arfly.member.controller;
 import com.capstone.arfly.common.exception.ErrorResponse;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.dto.MemberCreateDto;
+import com.capstone.arfly.member.dto.MemberLoginDto;
 import com.capstone.arfly.member.dto.TokenResponseDto;
 import com.capstone.arfly.member.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,6 +46,24 @@ public class AuthController {
         //토큰 생성
         TokenResponseDto response = authService.generateTokens(member);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "시스템 로그인", description = "사용자의 아이디와 비밀번호르 입력받고 토큰을 발급한다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "로그인 성공 및 토큰 발급",
+                    content = @Content(schema = @Schema(implementation = TokenResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청(입력값 유효성 검증 실패)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "아이디 또는 비밀번호가 일치하지 않음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/doLogin")
+    public ResponseEntity<?> doLogin(@Valid @RequestBody MemberLoginDto memberLoginDto) {
+        //검증
+        Member member = authService.login(memberLoginDto);
+        //토큰 발급
+        TokenResponseDto response = authService.generateTokens(member);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
 }
