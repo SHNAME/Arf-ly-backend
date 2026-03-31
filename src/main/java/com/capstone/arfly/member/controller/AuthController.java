@@ -13,11 +13,15 @@ import com.capstone.arfly.member.dto.KakaoProfileDto;
 import com.capstone.arfly.member.dto.LogoutRequestDto;
 import com.capstone.arfly.member.dto.MemberCreateDto;
 import com.capstone.arfly.member.dto.MemberLoginDto;
+import com.capstone.arfly.member.dto.NaverAccessTokenDto;
+import com.capstone.arfly.member.dto.NaverProfileDto;
+import com.capstone.arfly.member.dto.NaverRedirectDto;
 import com.capstone.arfly.member.dto.RedirectDto;
 import com.capstone.arfly.member.dto.TokenResponseDto;
 import com.capstone.arfly.member.service.AuthService;
 import com.capstone.arfly.member.service.GoogleService;
 import com.capstone.arfly.member.service.KakaoService;
+import com.capstone.arfly.member.service.NaverService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -44,6 +48,7 @@ public class AuthController {
     private final JwtTokenUtil jwtTokenUtil;
     private final GoogleService googleService;
     private final KakaoService kakaoService;
+    private final NaverService naverService;
 
     @Operation(summary = "회원가입", description = "사용자의 정보를 받아 회원가입 진행 후 토큰을 반환한다.")
     @ApiResponses(value = {
@@ -214,6 +219,48 @@ public class AuthController {
     }
 
 
+    @Operation(
+            summary = "네이버 소셜 로그인",
+            description = "네이버 인가 코드를 이용해 사용자 정보를 조회하고, 회원가입 또는 로그인을 처리한 뒤 JWT 토큰을 발급."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "로그인/회원가입 성공 및 토큰 발급",
+                    content = @Content(schema = @Schema(implementation = TokenResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 (1. 파라미터 유효성 검증 실패(@Valid) 2. 인가 코드 문제  3. 리다이렉트 URI 불일치)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "네이버 인증 실패 (유효하지 않거나 만료된 카카오 액세스 토큰)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류 또는 네이버 인증 서버 통신 불가",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @PostMapping("/naver/doLogin")
+    public ResponseEntity<?> naverLogin(@Valid @RequestBody NaverRedirectDto naverRedirectDto) {
+        NaverAccessTokenDto accessToken = naverService.getAccessToken(naverRedirectDto);
+
+        NaverProfileDto naverProfileDto = naverService.getNaverProfile(accessToken.getAccess_token());
+
+        Member originalMember = authService.getMemberBySocialId(naverProfileDto.getResponse().getId());
+        if (originalMember == null) {
+            originalMember = authService.createOauth(naverProfileDto.getResponse().getId(),
+                    naverProfileDto.getResponse().getEmail(),
+                    SocialType.NAVER, naverProfileDto.getResponse().getName());
+        }
+        TokenResponseDto response = authService.generateTokens(originalMember);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+
+    }
 
 
 }
