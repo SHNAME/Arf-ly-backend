@@ -1,5 +1,6 @@
 package com.capstone.arfly.common.config;
 
+import com.capstone.arfly.common.auth.JwtTokenFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -10,6 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -17,14 +19,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
-
-    //PASSWORD 암호화 싱글톤 객체 생성
+    private final JwtTokenFilter jwtTokenFilter;
+    //비밀번호 암호화 싱글톤 객체 생성
     @Bean
     public PasswordEncoder makePassword() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
-    // 커스텀 시큐리티 필터
+    // Custom Security Filter
     @Bean
     public SecurityFilterChain myFilter(HttpSecurity httpSecurity) {
         return httpSecurity.cors(cors
@@ -33,11 +35,11 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a ->
-                        a.requestMatchers("/auth/create", "/auth/doLogin", "/auth/google/doLogin",
-                                "/auth/kakao/doLogin", "/auth/naver/doLogin"
-                                , "/auth/refresh", "/terms/latest", "/member/check-username", "/auth/phone/verify"
-                                , "/auth/token/refresh", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html",
+                        a.requestMatchers("/auth/create","/auth/doLogin","/auth/google/doLogin","/auth/kakao/doLogin","/auth/naver/doLogin"
+                                ,"/auth/refresh","/terms/latest","/member/check-username","/auth/phone/verify"
+                                ,"/auth/token/refresh","/swagger-ui/**","/v3/api-docs/**","/swagger-ui.html",
                                 "/oauth2/**").permitAll().anyRequest().authenticated())
+                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
