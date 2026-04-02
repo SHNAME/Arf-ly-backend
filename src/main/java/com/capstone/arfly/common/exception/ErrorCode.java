@@ -15,7 +15,8 @@ public enum ErrorCode {
     INVALID_HEADER(HttpStatus.BAD_REQUEST, "Authorization 헤더 형식이 올바르지 않습니다.", "INVALID_HEADER"),
     EMPTY_TOKEN(HttpStatus.BAD_REQUEST, "토큰 정보가 비어있습니다.", "EMPTY_TOKEN"),
     MISSING_TOKEN_INFO(HttpStatus.BAD_REQUEST, "토큰 내 필수 정보(UID/전화번호)가 누락되었습니다.", "MISSING_TOKEN_INFO"),
-    OAUTH_ACCESS_TOKEN_FAIL(HttpStatus.BAD_REQUEST,"Oauth AccessToken 발급에 실패했습니다.","INVALID_METADATA");
+    OAUTH_ACCESS_TOKEN_FAIL(HttpStatus.BAD_REQUEST,"Oauth AccessToken 발급에 실패했습니다.","INVALID_METADATA"),
+    USER_NOT_EXISTS(HttpStatus.NOT_FOUND,"요청하신 사용자는 존재하지 않습니다.","USER_NOT_EXISTS");
     //예외 상태 코드
     private final HttpStatus httpStatus;
     //예외 메세지

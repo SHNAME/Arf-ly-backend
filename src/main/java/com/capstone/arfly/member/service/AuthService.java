@@ -5,6 +5,7 @@ import com.capstone.arfly.common.exception.InvalidCredentialsException;
 import com.capstone.arfly.common.exception.InvalidTokenException;
 import com.capstone.arfly.common.exception.PhoneAlreadyException;
 import com.capstone.arfly.common.exception.UserAlreadyExistsException;
+import com.capstone.arfly.common.exception.UserNotExistsException;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.domain.RefreshToken;
 import com.capstone.arfly.member.domain.SocialType;
@@ -177,4 +178,12 @@ public class AuthService {
         }
     }
 
+    public Member findUserId(PhoneAuthInfoDto phoneAuthInfoDto) {
+        Optional<Member> findMember = memberRepository.findByFirebaseUidAndPhoneNumber(
+                phoneAuthInfoDto.getUid(), phoneAuthInfoDto.getPhoneNumber());
+        if(findMember.isEmpty()){
+            throw new UserNotExistsException();
+        }
+        return findMember.get();
+    }
 }

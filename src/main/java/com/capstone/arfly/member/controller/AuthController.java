@@ -19,6 +19,7 @@ import com.capstone.arfly.member.dto.NaverRedirectDto;
 import com.capstone.arfly.member.dto.PhoneAuthInfoDto;
 import com.capstone.arfly.member.dto.RedirectDto;
 import com.capstone.arfly.member.dto.TokenResponseDto;
+import com.capstone.arfly.member.dto.UserIdResponseDto;
 import com.capstone.arfly.member.service.AuthService;
 import com.capstone.arfly.member.service.FirebaseService;
 import com.capstone.arfly.member.service.GoogleService;
@@ -127,8 +128,6 @@ public class AuthController {
         authService.logout(logoutRequestDto);
         return new ResponseEntity<>(HttpStatus.OK);
     }
-
-
 
 
     @Operation(
@@ -302,6 +301,44 @@ public class AuthController {
         authService.verifyPhoneAuthInfo(phoneAuthInfo);
 
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(
+            summary = "아이디 찾기",
+            description = "파이어베이스에서 추출한 토큰이 맞는지 검증하고, 토큰에 포함된 UID와 전화번호로 사용자의 ID를 찾아서 반환한다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "인증 성공",
+                    content = @Content(schema = @Schema(implementation = UserIdResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 (헤더 형식 오류, 토큰 누락, 필수 정보 누락 등)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 (토큰 만료, 폐기, 유효하지 않은 토큰)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 사용자",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<?> findUserId(
+            @Parameter(name = "Authorization", description = "Bearer {Firebase_Token}", required = true)
+            @RequestHeader("Authorization") String token) {
+        //토큰 검증 및 유저 정보 추출
+        PhoneAuthInfoDto phoneAuthInfoDto = firebaseService.verifyTokenAndGetInfo(token);
+
+        // 유저 ID 찾기
+        Member findMember = authService.findUserId(phoneAuthInfoDto);
+        UserIdResponseDto response = UserIdResponseDto.builder().userId(findMember.getUserId()).build();
+
+        return new ResponseEntity<>(response,HttpStatus.OK);
     }
 
 }
