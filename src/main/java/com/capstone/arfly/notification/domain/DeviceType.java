@@ -1,4 +1,4 @@
-package com.capstone.arfly.member.domain;
+package com.capstone.arfly.notification.domain;
 
 
 public enum DeviceType {
