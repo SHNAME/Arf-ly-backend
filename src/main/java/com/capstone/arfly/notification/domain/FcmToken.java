@@ -44,6 +44,10 @@ public class FcmToken extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private DeviceType deviceType;
 
+    @Builder.Default
+    private LocalDateTime lastUsedAt = LocalDateTime.now();
+
+
     public void updateMember(Member member){
         this.member = member;
     }
