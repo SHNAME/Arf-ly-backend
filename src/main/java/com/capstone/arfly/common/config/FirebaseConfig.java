@@ -3,12 +3,14 @@ package com.capstone.arfly.common.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
 import jakarta.annotation.PostConstruct;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -44,4 +46,12 @@ public class FirebaseConfig {
             throw new RuntimeException("Firebase 초기화 에러", e);
         }
     }
+
+    //파이어베이스 알림을 보내기 위한 빈 객체 생성 
+    @Bean
+    public FirebaseMessaging firebaseMessaging(){
+        return FirebaseMessaging.getInstance(FirebaseApp.getInstance());
+    }
+
+
 }
