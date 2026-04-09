@@ -47,17 +47,24 @@ public class MedicationReminderService {
     public void updateMedicationReminder(Long alarmId, @Valid UpdateMedicationReminderRequest request,
                                          Long userId) {
         //유저의 알람이 맞는지 확인
-        MedicationReminder reminder = medicationReminderRepository.findByIdAndMemberId(alarmId,userId)
+        MedicationReminder reminder = medicationReminderRepository.findByIdAndMemberId(alarmId, userId)
                 .orElseThrow(MedicationReminderNotFoundException::new);
 
-        if(request.getTitle() != null){
+        if (request.getTitle() != null) {
             reminder.updateTitle(request.getTitle());
         }
-        if(request.getMemo() != null){
+        if (request.getMemo() != null) {
             reminder.updateContent(request.getMemo());
         }
-        if(request.getReminderTime() !=null){
+        if (request.getReminderTime() != null) {
             reminder.updateReminderTime(request.getReminderTime());
         }
+    }
+
+    public void deleteMedicationReminder(Long alarmId, Long userId) {
+        MedicationReminder reminder = medicationReminderRepository.findByIdAndMemberId(alarmId, userId)
+                .orElseThrow(MedicationReminderNotFoundException::new);
+
+        medicationReminderRepository.delete(reminder);
     }
 }

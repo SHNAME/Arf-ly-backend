@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -103,6 +104,29 @@ public class MedicationReminderController {
                                                       @AuthenticationPrincipal UserDetails userDetails) {
         Long userId = Long.parseLong(userDetails.getUsername());
         medicationReminderService.updateMedicationReminder(alarmId, updateReminderRequest, userId);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @Operation(summary = "복약 알람 삭제", description =  "요청한 사용자의 복약 알림을 삭제한다..")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "약 알람 삭제 성공(Body 데이터 X)"
+            ),
+            @ApiResponse(
+                    responseCode = "401", description = "인증되지 않은 사용자(엑세스 토큰 오류)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404", description = "알람을 찾을 수 없음 (ID가 존재하지 않거나 본인의 알람이 아님)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @DeleteMapping("/alarms/{alarmId}")
+    public ResponseEntity<?> deleteMedicationReminder(@PathVariable(name = "alarmId") Long alarmId,
+                                                      @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = Long.parseLong(userDetails.getUsername());
+        medicationReminderService.deleteMedicationReminder(alarmId,userId);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
