@@ -58,6 +58,9 @@ public class MedicationReminder extends BaseTimeEntity {
             this.timeUpdatedAt = LocalDateTime.now();
         }
     }
+    public void updateActiveStatus(boolean status){
+        this.active = status;
+    }
 
     public static MedicationReminder create(CreateMedicationReminderRequest reminderRequest ,Member member) {
        return  MedicationReminder.builder().title(reminderRequest.getTitle())

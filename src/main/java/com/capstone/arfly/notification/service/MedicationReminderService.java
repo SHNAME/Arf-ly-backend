@@ -7,6 +7,7 @@ import com.capstone.arfly.notification.domain.MedicationReminder;
 import com.capstone.arfly.notification.dto.CreateMedicationReminderRequest;
 import com.capstone.arfly.notification.dto.GetMedicationRemindersResponse;
 import com.capstone.arfly.notification.dto.UpdateMedicationReminderRequest;
+import com.capstone.arfly.notification.dto.UpdateMedicationReminderStatusRequest;
 import com.capstone.arfly.notification.repository.MedicationReminderRepository;
 import jakarta.validation.Valid;
 import java.time.LocalTime;
@@ -66,5 +67,11 @@ public class MedicationReminderService {
                 .orElseThrow(MedicationReminderNotFoundException::new);
 
         medicationReminderRepository.delete(reminder);
+    }
+
+    public void updateMedicationReminderStatus(Long alarmId, Long userId, UpdateMedicationReminderStatusRequest request) {
+        MedicationReminder reminder = medicationReminderRepository.findByIdAndMemberId(alarmId, userId)
+                .orElseThrow(MedicationReminderNotFoundException::new);
+        reminder.updateActiveStatus(request.getActive());
     }
 }

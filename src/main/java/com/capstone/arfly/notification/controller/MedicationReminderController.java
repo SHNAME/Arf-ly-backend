@@ -1,9 +1,10 @@
-package com.capstone.arfly.notification;
+package com.capstone.arfly.notification.controller;
 
 import com.capstone.arfly.common.exception.ErrorResponse;
 import com.capstone.arfly.notification.dto.CreateMedicationReminderRequest;
 import com.capstone.arfly.notification.dto.GetMedicationRemindersResponse;
 import com.capstone.arfly.notification.dto.UpdateMedicationReminderRequest;
+import com.capstone.arfly.notification.dto.UpdateMedicationReminderStatusRequest;
 import com.capstone.arfly.notification.service.MedicationReminderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -130,5 +131,31 @@ public class MedicationReminderController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @Operation(
+            summary = "복약 알람 활성화 상태 수정",
+            description = "특정 복약 알람의 활성화(ON/OFF) 상태를 변경합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "상태 업데이트 성공(Body 데이터 X)"
+            ),
+            @ApiResponse(
+                    responseCode = "401", description = "인증되지 않은 사용자(엑세스 토큰 오류)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404", description = "알람을 찾을 수 없음 (ID가 존재하지 않거나 본인의 알람이 아님)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    @PatchMapping("/alarms/{alarmId}/status")
+    public ResponseEntity<?> updateMedicationReminderStatus(@PathVariable(name = "alarmId") Long alarmId,
+                                                      @Valid @RequestBody UpdateMedicationReminderStatusRequest request,
+                                                      @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = Long.parseLong(userDetails.getUsername());
+        medicationReminderService.updateMedicationReminderStatus(alarmId,userId,request);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 
 }
