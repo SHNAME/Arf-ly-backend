@@ -10,6 +10,8 @@ import com.google.type.LatLng;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +66,34 @@ public class HospitalService {
         return hospitalList;
     }
 
+    // 장소 사진 함수
+    public byte[] getHospitalPhoto(Long userId, String photoName, Integer maxHeight) {
+
+        memberRepository.findById(userId).orElseThrow(()->new BusinessException(ErrorCode.USER_NOT_EXISTS));
+
+        try {
+            GetPhotoMediaRequest request = GetPhotoMediaRequest.newBuilder()
+                    .setName(photoName)
+                    .setMaxHeightPx(maxHeight)
+                    .build();
+
+            PhotoMedia photo = placesClient.getPhotoMedia(request);
+            String uri = photo.getPhotoUri();
+
+            RestTemplate restTemplate = new RestTemplate();
+
+            return restTemplate.getForObject(uri, byte[].class);
+
+        } catch (HttpClientErrorException.NotFound e) {
+            // 구글 맵에 해당 장소의 사진이 없는 경우
+            log.info("해당 병원에 사진이 없습니다.");
+            return null;
+        } catch (Exception e){
+            log.error("구글 사진 로드 중 오류 발생. photoName: {}, 원인: {}", photoName, e.getMessage());
+            throw new BusinessException(ErrorCode.MAP_PHOTO_ERROR);
+        }
+    }
+
     // 주변 병원 리스트(구글 api) 호출 함수
     public SearchNearbyResponse getMapResponse(Double latitude, Double longitude){
 
@@ -84,4 +114,5 @@ public class HospitalService {
 
         return placesClient.searchNearby(request);
     }
+
 }
