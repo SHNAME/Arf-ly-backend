@@ -88,7 +88,7 @@ public class HospitalController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    @GetMapping("/v1/hospital/photo")
+    @GetMapping("/maps/photo")
     public ResponseEntity<byte[]> getHospitalPhoto(
             @RequestParam @NotBlank(message = "사진 이름은 필수입니다.")
                     @Parameter(description = "imageUrl", example = "/api/v1/hospitals/photo?name=places/ChIJNx.../photos/AUQs...")
