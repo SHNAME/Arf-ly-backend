@@ -30,4 +30,9 @@ public class SearchService {
     private String generateSearchHistoryKey(Long memberId) {
         return RedisConstant.SEARCH_HISTORY_PREFIX + memberId;
     }
+
+    public void removeRecentSearch(long userId, String keyword) {
+        String key = generateSearchHistoryKey(userId);
+        redisTemplate.opsForZSet().remove(key,keyword);
+    }
 }
