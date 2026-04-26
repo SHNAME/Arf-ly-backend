@@ -6,10 +6,13 @@ import com.capstone.arfly.common.exception.UserNotExistsException;
 import com.capstone.arfly.community.domain.Comment;
 import com.capstone.arfly.community.domain.CommentMention;
 import com.capstone.arfly.community.domain.Post;
+import com.capstone.arfly.community.dto.CommentDetailResponseDto;
 import com.capstone.arfly.community.dto.CommentRequestDto;
+import com.capstone.arfly.community.dto.PostDetailResponseDto;
 import com.capstone.arfly.community.event.CommentCreatedEvent;
 import com.capstone.arfly.community.repository.CommentMentionRepository;
 import com.capstone.arfly.community.repository.CommentRepository;
+import com.capstone.arfly.community.repository.PostImageRepository;
 import com.capstone.arfly.community.repository.PostRepository;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.repository.MemberRepository;
@@ -31,6 +34,7 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final CommentMentionRepository commentMentionRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PostImageRepository postImageRepository;
 
     @Transactional
     public void createComment(Long postId, long userId, CommentRequestDto requestDto) {
@@ -39,7 +43,6 @@ public class PostService {
         Member commenter = memberRepository.getReferenceById(userId);
         Set<Long> mentionIds = requestDto.getMentionedUserIds();
         boolean hasMentions = mentionIds != null && !mentionIds.isEmpty();
-
 
         //내용 내 id 목록과 mentionIdList 일치 여부 확인
         validateContentMentions(requestDto.getContent(), mentionIds);
@@ -65,7 +68,7 @@ public class PostService {
 
             //푸시 알람을 위한 Event 생성
             eventPublisher.publishEvent(new CommentCreatedEvent(this,
-                    post,commenter,newComment,mentionIds));
+                    post, commenter, newComment, mentionIds));
         }
     }
 
@@ -85,6 +88,17 @@ public class PostService {
     }
 
 
+    public PostDetailResponseDto getPostDetail(Long postId) {
+        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        List<CommentDetailResponseDto> commentList = commentRepository.findCommentsWithAuthorByPostId(
+                post.getId());
+        List<String> fileList = postImageRepository.findFilePathsByPostId(post.getId());
+
+        PostDetailResponseDto response = PostDetailResponseDto.makePostDetailResponse(post, commentList,
+                fileList);
+
+        return response;
+    }
 }
 
 

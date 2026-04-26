@@ -1,6 +1,7 @@
 package com.capstone.arfly.community.controller;
 
 import com.capstone.arfly.community.dto.CommentRequestDto;
+import com.capstone.arfly.community.dto.PostDetailResponseDto;
 import com.capstone.arfly.community.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,6 +20,21 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/posts")
 public class PostController {
     private final PostService postService;
+
+    @Operation(
+            summary = "게시글 상세 조회",
+            description = "특정 게시글의 상세 정보를 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "게시글 조회 성공"),
+            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음"),
+            @ApiResponse(responseCode = "401", description = "인증 실패 (토큰 만료 혹은 유효하지 않은 토큰)")
+    })
+    @GetMapping("/{postId}")
+    public ResponseEntity<?> getPostDetail(@PathVariable Long postId) {
+        PostDetailResponseDto responseDto = postService.getPostDetail(postId);
+        return ResponseEntity.ok(responseDto);
+    }
 
     @Operation(
             summary = "댓글 달기",
