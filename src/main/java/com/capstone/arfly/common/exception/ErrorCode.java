@@ -30,6 +30,8 @@ public enum ErrorCode {
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST,"잘못된 파일 유형입니다.","INVALID_FILE_TYPE"),
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST,"파일 용량을 초과했습니다.", "FILE_TOO_LARGE"),
     MEDICATION_REMINDER_NOT_FOUND(HttpStatus.NOT_FOUND,"요청한 알람은 존재하지 않습니다.", "REMINDER_NOT_FOUND"),
+    POST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 게시글입니다.", "POST_NOT_FOUND"),
+    INVALID_MENTION(HttpStatus.BAD_REQUEST, "본문의 멘션 정보와 전달된 멘션 ID 목록이 일치하지 않습니다.", "INVALID_MENTION"),
 
     GOOGLE_MAP_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "구글 맵 api를 실행하는 도중 오류가 발생했습니다.", "GOOGLE_MAP_ERROR"),
     MAP_PHOTO_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "구글 맵 api으로 사진을 가져오는 도중 오류가 발생했습니다.", "MAP_PHOTO_ERROR"),
