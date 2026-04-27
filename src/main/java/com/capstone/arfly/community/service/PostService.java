@@ -46,6 +46,7 @@ public class PostService {
     private final PostImageRepository postImageRepository;
     private final S3Uploader s3Uploader;
     private final FileRepository fileRepository;
+    private final PostWriter postWriter;
 
     @Transactional
     public void createComment(Long postId, long userId, CommentRequestDto requestDto) {
@@ -99,7 +100,6 @@ public class PostService {
     }
 
 
-
     public PostDetailResponseDto getPostDetail(Long postId) {
         Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
         List<CommentDetailResponseDto> commentList = commentRepository.findCommentsWithAuthorByPostId(
@@ -112,8 +112,7 @@ public class PostService {
         return response;
     }
 
-    @Transactional
-    public void createPost(long userId,  PostCreateRequestDto requestDto, List<MultipartFile> files) {
+    public void createPost(long userId, PostCreateRequestDto requestDto, List<MultipartFile> files) {
         Member author = memberRepository.getReferenceById(userId);
         //게시글 생성 및 저장
         Post newPost = Post.builder()
@@ -121,43 +120,27 @@ public class PostService {
                 .content(requestDto.getContent())
                 .member(author)
                 .build();
-        postRepository.save(newPost);
 
-        if(files != null && !files.isEmpty()){
+        if (files != null && !files.isEmpty()) {
             //File MetaData 생성
             List<FileDetailDto> fileDetailList = files.stream()
                     .map(file -> s3Uploader.makeMetaData(file, S3DIRNAME.POST_IMAGE.name())).toList();
 
-            List<File> fileList = new ArrayList<>();
-            List<PostImage> postImages = new ArrayList<>();
-
-            for (int i = 0; i < fileDetailList.size(); i++) {
-                FileDetailDto detail = fileDetailList.get(i);
-
-                File fileEntity = File.builder()
-                        .fileName(detail.getOriginalFileName())
-                        .fileKey(detail.getKey())
-                        .fileSize(detail.getFileSize())
-                        .fileType(detail.getFileType())
-                        .build();
-
-                fileList.add(fileEntity);
-
-                postImages.add(PostImage.builder()
-                        .post(newPost)
-                        .file(fileEntity)
-                        .orderIndex(i)
-                        .build());
-            }
-            postImageRepository.saveAll(postImages);
-            fileRepository.saveAll(fileList);
-
             // S3 Upload
             List<String> keys = fileDetailList.stream().map(FileDetailDto::getKey).toList();
-            s3Uploader.uploadFiles(keys,files);
+            s3Uploader.uploadFiles(keys, files);
+            try {
+                postWriter.savePostAndImages(newPost, fileDetailList);
+            } catch (Exception e) {
+                keys.forEach(s3Uploader::deleteFile);
+            }
+        } else {
+            postWriter.savePost(newPost);
         }
 
     }
+
+
 }
 
 
