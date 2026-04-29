@@ -35,7 +35,9 @@ public enum ErrorCode {
 
     GOOGLE_MAP_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "구글 맵 api를 실행하는 도중 오류가 발생했습니다.", "GOOGLE_MAP_ERROR"),
     MAP_PHOTO_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "구글 맵 api으로 사진을 가져오는 도중 오류가 발생했습니다.", "MAP_PHOTO_ERROR"),
-    INVALID_PLACES_ID(HttpStatus.BAD_REQUEST, "잘못된 placesId입니다.","INVALID_PLACES_ID");
+    INVALID_PLACES_ID(HttpStatus.BAD_REQUEST, "잘못된 placesId입니다.","INVALID_PLACES_ID"),
+    POST_AUTHOR_MISMATCH(HttpStatus.FORBIDDEN,"게시글 작성자만 삭제할 수 있습니다.", "POST_AUTHOR_MISMATCH");
+
 
     //예외 상태 코드
     private final HttpStatus httpStatus;

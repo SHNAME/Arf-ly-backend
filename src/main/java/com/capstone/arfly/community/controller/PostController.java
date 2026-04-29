@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -84,6 +85,25 @@ public class PostController {
         long userId = Long.parseLong(userDetails.getUsername());
         postService.createComment(postId, userId, requestDto);
         return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @Operation(
+            summary = "게시글 삭제",
+            description = "특정 게시글을 삭제합니다. 작성자 본인만 삭제할 수 있습니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "게시글 삭제 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패 (토큰 만료 혹은 유효하지 않은 토큰)"),
+            @ApiResponse(responseCode = "403", description = "삭제 권한 없음 (작성자 불일치)"),
+            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음")
+    })
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<?> deletePost(
+            @PathVariable Long postId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        long userId = Long.parseLong(userDetails.getUsername());
+        postService.deletePost(postId, userId);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(

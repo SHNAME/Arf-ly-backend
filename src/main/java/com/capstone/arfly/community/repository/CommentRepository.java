@@ -4,12 +4,13 @@ import com.capstone.arfly.community.domain.Comment;
 import com.capstone.arfly.community.dto.CommentDetailResponseDto;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CommentRepository extends JpaRepository<Comment,Long> {
+public interface CommentRepository extends JpaRepository<Comment, Long> {
 
 
     @Query(
@@ -23,5 +24,9 @@ public interface CommentRepository extends JpaRepository<Comment,Long> {
                     ORDER BY c.createdAt ASC
                     """
     )
-    List<CommentDetailResponseDto> findCommentsWithAuthorByPostId(@Param("postId")Long postId);
+    List<CommentDetailResponseDto> findCommentsWithAuthorByPostId(@Param("postId") Long postId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("DELETE FROM Comment c WHERE c.post.id = :postId")
+    void deleteByPostId(@Param("postId") Long postId);
 }

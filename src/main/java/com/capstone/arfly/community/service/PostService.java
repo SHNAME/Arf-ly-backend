@@ -1,8 +1,10 @@
 package com.capstone.arfly.community.service;
 
 import com.capstone.arfly.common.constant.S3DIRNAME;
+import com.capstone.arfly.common.domain.File;
 import com.capstone.arfly.common.dto.FileDetailDto;
 import com.capstone.arfly.common.exception.InvalidMentionException;
+import com.capstone.arfly.common.exception.PostAuthorMisMatchException;
 import com.capstone.arfly.common.exception.PostNotFoundException;
 import com.capstone.arfly.common.exception.UserNotExistsException;
 import com.capstone.arfly.common.util.S3Uploader;
@@ -19,6 +21,7 @@ import com.capstone.arfly.community.event.PostLikeEvent;
 import com.capstone.arfly.community.repository.CommentMentionRepository;
 import com.capstone.arfly.community.repository.CommentRepository;
 import com.capstone.arfly.community.repository.PostImageRepository;
+import com.capstone.arfly.community.repository.PostLikeRepository;
 import com.capstone.arfly.community.repository.PostRepository;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.repository.MemberRepository;
@@ -28,6 +31,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -36,6 +40,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PostService {
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
@@ -46,7 +51,7 @@ public class PostService {
     private final S3Uploader s3Uploader;
     private final PostWriter postWriter;
     private final RedisTemplate<String, String> redisTemplate;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final PostLikeRepository postLikeRepository;
 
     @Transactional
     public void createComment(Long postId, long userId, CommentRequestDto requestDto) {
@@ -143,21 +148,54 @@ public class PostService {
 
     public void toggleLike(Long postId, long userId) {
         Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
-        String countKey = "post:like:"+postId;
-        String userSetKey = "post:like:users:"+postId;
+        String countKey = "post:like:" + postId;
+        String userSetKey = "post:like:users:" + postId;
 
         Long added = redisTemplate.opsForSet()
                 .add(userSetKey, String.valueOf(userId));
 
         //이미 좋아요를 누른 경우 -> 취소 처리 필요
-        if(added == 0){
-            redisTemplate.opsForSet().remove(userSetKey,String.valueOf(userId));
+        if (added == 0) {
+            redisTemplate.opsForSet().remove(userSetKey, String.valueOf(userId));
             redisTemplate.opsForValue().decrement(countKey);
-            applicationEventPublisher.publishEvent(new PostLikeEvent(this,postId,userId, LikeEventType.CANCEL));
+            eventPublisher.publishEvent(new PostLikeEvent(this, postId, userId, LikeEventType.CANCEL));
             return;
         }
         redisTemplate.opsForValue().increment(countKey);
-        applicationEventPublisher.publishEvent(new PostLikeEvent(this,postId,userId,LikeEventType.LIKE));
+        eventPublisher.publishEvent(new PostLikeEvent(this, postId, userId, LikeEventType.LIKE));
+    }
+
+    @Transactional
+    public void deletePost(Long postId, long userId) {
+        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+
+        //게시글에 대한 삭제 권한 없음
+        if (post.getMember().getId() != userId) {
+            throw new PostAuthorMisMatchException();
+        }
+
+        //언급 알림 삭제
+        commentMentionRepository.deleteByPostId(postId);
+
+        // 댓글 삭제
+        commentRepository.deleteByPostId(postId);
+        // 좋아요 삭제
+        postLikeRepository.deleteByPostId(postId);
+
+        //게시물 관련 파일 삭제 예약 후 이미지 삭제
+        List<File> files = postImageRepository.findFileByPostId(postId);
+        files.forEach(File::markAsDeleted);
+        postImageRepository.deleteByPostId(postId);
+
+        //게시물 삭제
+        postRepository.deleteById(postId);
+
+        //redis Key 삭제
+        try {
+            redisTemplate.delete(List.of("post:like:" + postId, "post:like:users:" + postId));
+        } catch (Exception e) {
+            log.warn("Redis 게시글 좋아요 키 삭제 실패: postId={}", postId, e);
+        }
     }
 }
 
