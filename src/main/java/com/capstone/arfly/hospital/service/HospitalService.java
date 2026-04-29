@@ -6,6 +6,8 @@ import com.capstone.arfly.hospital.dto.HospitalDetailResponse;
 import com.capstone.arfly.hospital.dto.HospitalListResponse;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.repository.MemberRepository;
+import com.google.api.gax.grpc.GrpcCallContext;
+import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.ApiException;
 import com.google.api.gax.rpc.StatusCode;
 import com.google.maps.places.v1.*;
@@ -19,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -29,6 +32,22 @@ public class HospitalService {
     private final MemberRepository memberRepository;
 
     private final PlacesClient placesClient;
+
+    // Place Details 필드마스크
+    private static final String detailFields = "id," +
+            "displayName," +
+            "shortFormattedAddress," +
+            "photos," +
+            "regularOpeningHours," +
+            "nationalPhoneNumber";
+
+    // Nearby Search 필드마스크
+    private static final String searchFields = "places.id," +
+            "places.displayName," +
+            "places.location," +
+            "places.shortFormattedAddress," +
+            "places.photos," +
+            "places.regularOpeningHours";
 
     // 주변 병원 리스트 가져오기
     public List<HospitalListResponse> getHospitalList(Long userId){
@@ -145,7 +164,7 @@ public class HospitalService {
     }
 
     // 주변 병원 리스트(구글 api) 호출 함수
-    public SearchNearbyResponse getMapResponse(Double latitude, Double longitude){
+    private SearchNearbyResponse getMapResponse(Double latitude, Double longitude){
 
         // api(Nearby search) request 생성
         SearchNearbyRequest request = SearchNearbyRequest.newBuilder()
@@ -162,10 +181,11 @@ public class HospitalService {
                 .setLanguageCode("ko")
                 .build();
 
-        return placesClient.searchNearby(request);
+        return placesClient.searchNearbyCallable()
+                .call(request, fieldMaskContext(searchFields));
     }
 
-    public PhotoMedia getPhotoResponse(String photoName, Integer maxHeight) {
+    private PhotoMedia getPhotoResponse(String photoName, Integer maxHeight) {
 
         String photoMediaName = photoName.endsWith("/media")
                 ? photoName
@@ -180,14 +200,19 @@ public class HospitalService {
         return placesClient.getPhotoMedia(request);
     }
 
-    public Place getPlaceDetailResponse(String placeId) {
+    private Place getPlaceDetailResponse(String placeId) {
 
         GetPlaceRequest request = GetPlaceRequest.newBuilder()
                 .setName("places/" + placeId)
                 .setLanguageCode("ko")
                 .build();
 
-        return placesClient.getPlace(request);
+        return placesClient.getPlaceCallable()
+                .call(request, fieldMaskContext(detailFields));
     }
 
+    private ApiCallContext fieldMaskContext(String fieldMask) {
+        return GrpcCallContext.createDefault()
+                .withExtraHeaders(Map.of("X-Goog-FieldMask", Collections.singletonList(fieldMask)));
+    }
 }
