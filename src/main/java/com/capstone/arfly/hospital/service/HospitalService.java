@@ -46,8 +46,7 @@ public class HospitalService {
 
                 // 이미지 조회를 위한 url 생성(구글 맵 api에서 불러온 사진이 없으면 null)
                 if (!place.getPhotosList().isEmpty()) {
-                    String photoName = place.getPhotosList().get(0).getName();
-                    imageUrl = "/api/v1/hospitals/photo?name=" + photoName;
+                    imageUrl = place.getPhotosList().get(0).getName();
                 }
 
                 HospitalListResponse hospitalDto = HospitalListResponse.builder()
@@ -109,7 +108,7 @@ public class HospitalService {
 
                 for(int i = 0; i < photoCount; i++) {
                     String photoName = response.getPhotos(i).getName();
-                    imageUrls.add("/api/v1/hospitals/photo?name=" + photoName);
+                    imageUrls.add(photoName);
                 }
             }
 
@@ -167,9 +166,15 @@ public class HospitalService {
     }
 
     public PhotoMedia getPhotoResponse(String photoName, Integer maxHeight) {
+
+        String photoMediaName = photoName.endsWith("/media")
+                ? photoName
+                : photoName + "/media";
+
         GetPhotoMediaRequest request = GetPhotoMediaRequest.newBuilder()
-                .setName(photoName)
+                .setName(photoMediaName)
                 .setMaxHeightPx(maxHeight)
+                .setSkipHttpRedirect(true)
                 .build();
 
         return placesClient.getPhotoMedia(request);

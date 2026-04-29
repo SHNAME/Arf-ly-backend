@@ -89,7 +89,7 @@ public class HospitalController {
     @GetMapping("/maps/photo")
     public ResponseEntity<byte[]> getHospitalPhoto(
             @RequestParam @NotBlank(message = "사진 이름은 필수입니다.")
-                    @Parameter(description = "imageUrl", example = "/api/v1/hospitals/photo?name=places/ChIJNx.../photos/AUQs...")
+                    @Parameter(description = "imageUrl", example = "places/ChIJNx.../photos/AUQs...")
             String photoName,
             @RequestParam(required = false, defaultValue = "400")
             @Parameter(description = "사진 최대 높이입니다. 200~1000 범위의 값으로 제한되어 있으며 변경하고 싶으시면 말씀해주세요, 기본값은 400입니다.", example = "300")
