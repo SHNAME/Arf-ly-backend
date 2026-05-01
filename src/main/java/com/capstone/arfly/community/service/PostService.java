@@ -39,6 +39,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -57,7 +58,19 @@ public class PostService {
     private final PostWriter postWriter;
     private final RedisTemplate<String, String> redisTemplate;
     private final PostLikeRepository postLikeRepository;
-    private final FileRepository fileRepository;
+
+    private static final String TOGGLE_LIKE_SCRIPT =
+            "local added = redis.call('SADD', KEYS[1], ARGV[1]) " +
+                    "if added == 0 then " +
+                    "  redis.call('SREM', KEYS[1], ARGV[1]) " +
+                    "  redis.call('DECR', KEYS[2]) " +
+                    "  return -1 " +
+                    "else " +
+                    "  redis.call('INCR', KEYS[2]) " +
+                    "  return 1 " +
+                    "end";
+    private static final DefaultRedisScript<Long> script = new DefaultRedisScript<>(TOGGLE_LIKE_SCRIPT,Long.class);
+
 
     @Transactional
     public void createComment(Long postId, long userId, CommentRequestDto requestDto) {
@@ -153,22 +166,21 @@ public class PostService {
 
 
     public void toggleLike(Long postId, long userId) {
-        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+       postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
         String countKey = "post:like:" + postId;
         String userSetKey = "post:like:users:" + postId;
 
-        Long added = redisTemplate.opsForSet()
-                .add(userSetKey, String.valueOf(userId));
 
-        //이미 좋아요를 누른 경우 -> 취소 처리 필요
-        if (added == 0) {
-            redisTemplate.opsForSet().remove(userSetKey, String.valueOf(userId));
-            redisTemplate.opsForValue().decrement(countKey);
-            eventPublisher.publishEvent(new PostLikeEvent(this, postId, userId, LikeEventType.CANCEL));
-            return;
+        Long result = redisTemplate.execute(
+                script, List.of(userSetKey,countKey),
+                String.valueOf(userId)
+        );
+        if(result == 1L){
+            eventPublisher.publishEvent(new PostLikeEvent(this,postId,userId,LikeEventType.LIKE));
         }
-        redisTemplate.opsForValue().increment(countKey);
-        eventPublisher.publishEvent(new PostLikeEvent(this, postId, userId, LikeEventType.LIKE));
+        else{
+            eventPublisher.publishEvent(new PostLikeEvent(this,postId,userId,LikeEventType.CANCEL));
+        }
     }
 
     @Transactional
@@ -221,13 +233,13 @@ public class PostService {
             List<String> keys = fileDetailList.stream().map(FileDetailDto::getKey).toList();
             s3Uploader.uploadFiles(keys, files);
             try {
-                postWriter.updatePostAndImages(postId,fileDetailList,requestDto);
+                postWriter.updatePostAndImages(postId, fileDetailList, requestDto);
             } catch (Exception e) {
                 keys.forEach(s3Uploader::deleteFile);
                 throw e;
             }
         } else {
-            postWriter.updatePost(postId,requestDto);
+            postWriter.updatePost(postId, requestDto);
         }
     }
 }
