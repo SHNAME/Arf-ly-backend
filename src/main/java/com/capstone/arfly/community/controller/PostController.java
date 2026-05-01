@@ -3,6 +3,7 @@ package com.capstone.arfly.community.controller;
 import com.capstone.arfly.community.dto.CommentRequestDto;
 import com.capstone.arfly.community.dto.PostCreateRequestDto;
 import com.capstone.arfly.community.dto.PostDetailResponseDto;
+import com.capstone.arfly.community.dto.PostUpdateRequestDto;
 import com.capstone.arfly.community.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -85,6 +87,29 @@ public class PostController {
         long userId = Long.parseLong(userDetails.getUsername());
         postService.createComment(postId, userId, requestDto);
         return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @Operation(
+            summary = "게시글 수정",
+            description = "특정 게시글을 수정합니다. 변경할 필드만 전달하면 됩니다. 작성자 본인만 수정할 수 있습니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "게시글 수정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+            @ApiResponse(responseCode = "401", description = "인증 실패 (토큰 만료 혹은 유효하지 않은 토큰)"),
+            @ApiResponse(responseCode = "403", description = "수정 권한 없음 (작성자 불일치)"),
+            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 ERROR(EX.S3 Upload 과정 중 오류 발생)")
+    })
+    @PatchMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updatePost(
+            @PathVariable Long postId,
+            @Valid @RequestPart("request") PostUpdateRequestDto requestDto,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+        long userId = Long.parseLong(userDetails.getUsername());
+        postService.updatePost(postId, userId, requestDto, files);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(

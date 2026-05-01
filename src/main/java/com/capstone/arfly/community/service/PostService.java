@@ -7,6 +7,7 @@ import com.capstone.arfly.common.exception.InvalidMentionException;
 import com.capstone.arfly.common.exception.PostAuthorMisMatchException;
 import com.capstone.arfly.common.exception.PostNotFoundException;
 import com.capstone.arfly.common.exception.UserNotExistsException;
+import com.capstone.arfly.common.repository.FileRepository;
 import com.capstone.arfly.common.util.S3Uploader;
 import com.capstone.arfly.community.constant.LikeEventType;
 import com.capstone.arfly.community.domain.Comment;
@@ -17,6 +18,7 @@ import com.capstone.arfly.community.dto.CommentRequestDto;
 import com.capstone.arfly.community.dto.PostCreateRequestDto;
 import com.capstone.arfly.community.dto.PostDetailFileDto;
 import com.capstone.arfly.community.dto.PostDetailResponseDto;
+import com.capstone.arfly.community.dto.PostUpdateRequestDto;
 import com.capstone.arfly.community.event.CommentCreatedEvent;
 import com.capstone.arfly.community.event.PostLikeEvent;
 import com.capstone.arfly.community.repository.CommentMentionRepository;
@@ -26,6 +28,8 @@ import com.capstone.arfly.community.repository.PostLikeRepository;
 import com.capstone.arfly.community.repository.PostRepository;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.repository.MemberRepository;
+import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,6 +57,7 @@ public class PostService {
     private final PostWriter postWriter;
     private final RedisTemplate<String, String> redisTemplate;
     private final PostLikeRepository postLikeRepository;
+    private final FileRepository fileRepository;
 
     @Transactional
     public void createComment(Long postId, long userId, CommentRequestDto requestDto) {
@@ -196,6 +201,33 @@ public class PostService {
             redisTemplate.delete(List.of("post:like:" + postId, "post:like:users:" + postId));
         } catch (Exception e) {
             log.warn("Redis 게시글 좋아요 키 삭제 실패: postId={}", postId, e);
+        }
+    }
+
+
+    public void updatePost(Long postId, long userId, PostUpdateRequestDto requestDto,
+                           List<MultipartFile> files) {
+
+        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        if (post.getMember().getId() != userId) {
+            throw new PostAuthorMisMatchException();
+        }
+        if (files != null && !files.isEmpty()) {
+            //File MetaData 생성
+            List<FileDetailDto> fileDetailList = files.stream()
+                    .map(file -> s3Uploader.makeMetaData(file, S3DIRNAME.POST_IMAGE.name())).toList();
+
+            // S3 Upload
+            List<String> keys = fileDetailList.stream().map(FileDetailDto::getKey).toList();
+            s3Uploader.uploadFiles(keys, files);
+            try {
+                postWriter.updatePostAndImages(postId,fileDetailList,requestDto);
+            } catch (Exception e) {
+                keys.forEach(s3Uploader::deleteFile);
+                throw e;
+            }
+        } else {
+            postWriter.updatePost(postId,requestDto);
         }
     }
 }
