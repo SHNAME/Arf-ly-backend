@@ -37,8 +37,6 @@ public class GoogleMapConfig {
                 "places.photos," +
                 "places.regularOpeningHours";
 
-        String fieldMask = detailFields + "," + searchFields;
-
         PlacesSettings settings = null;
 
         try {
@@ -47,7 +45,6 @@ public class GoogleMapConfig {
                     .setHeaderProvider(() -> {
                         Map<String, String> headers = new HashMap<>();
                         headers.put("X-Goog-Api-Key", apiKey);
-                        headers.put("X-Goog-FieldMask", fieldMask);
                         return headers;
                     }).build();
         }catch (Exception e){
