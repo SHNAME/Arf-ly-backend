@@ -9,7 +9,7 @@ import java.util.List;
 
 @Component
 public class MultipartJacksonJsonHttpMessageConverter extends JacksonJsonHttpMessageConverter {
-g
+
     // content-type이 octet-stream이어도 jackson이 읽게해줌
     public MultipartJacksonJsonHttpMessageConverter(JsonMapper jsonMapper) {
         super(jsonMapper);
