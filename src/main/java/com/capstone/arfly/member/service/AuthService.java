@@ -1,6 +1,7 @@
 package com.capstone.arfly.member.service;
 
 import com.capstone.arfly.common.auth.JwtTokenUtil;
+import com.capstone.arfly.common.constant.RedisConstant;
 import com.capstone.arfly.common.exception.InvalidCredentialsException;
 import com.capstone.arfly.common.exception.InvalidTokenException;
 import com.capstone.arfly.common.exception.PhoneAlreadyException;
@@ -8,7 +9,6 @@ import com.capstone.arfly.common.exception.UserAlreadyExistsException;
 import com.capstone.arfly.common.exception.UserIdentityMismatchException;
 import com.capstone.arfly.common.exception.UserNotExistsException;
 import com.capstone.arfly.member.domain.Member;
-import com.capstone.arfly.member.domain.RefreshToken;
 import com.capstone.arfly.member.domain.SocialType;
 import com.capstone.arfly.member.domain.Terms;
 import com.capstone.arfly.member.domain.UserTermsAgreement;
@@ -20,7 +20,6 @@ import com.capstone.arfly.member.dto.PhoneAuthInfoDto;
 import com.capstone.arfly.member.dto.TokenResponseDto;
 import com.capstone.arfly.member.dto.UserAgreementDto;
 import com.capstone.arfly.member.repository.MemberRepository;
-import com.capstone.arfly.member.repository.RefreshTokenRepository;
 import com.capstone.arfly.member.repository.TermsRepository;
 import com.capstone.arfly.member.repository.UserTermsAgreementRepository;
 import java.util.List;
@@ -29,10 +28,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.naming.AuthenticationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,7 +45,7 @@ public class AuthService {
     private final TermsRepository termsRepository;
     private final UserTermsAgreementRepository userTermsAgreementRepository;
     private final JwtTokenUtil jwtTokenUtil;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Transactional
     public Member create(MemberCreateDto memberCreateDto) {
@@ -133,27 +132,23 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public Member validateRefreshToken(AccessTokenRequestDto accessTokenRequestDto) {
+        String token = accessTokenRequestDto.getRefreshToken();
         //토큰 유효성 검증
-        jwtTokenUtil.validateRefreshToken(accessTokenRequestDto.getRefreshToken());
-        Optional<RefreshToken> optToken = refreshTokenRepository.findByToken(accessTokenRequestDto.getRefreshToken());
-        if (optToken.isEmpty()) {
+        jwtTokenUtil.validateRefreshToken(token);
+
+        String memberId = redisTemplate.opsForValue().get(RedisConstant.REFRESH_TOKEN_PREFIX  + token);
+        if(memberId == null){
             throw new InvalidTokenException();
         }
-        Member member = optToken.get().getMember();
-        return member;
+        return memberRepository.findById(Long.parseLong(memberId)).orElseThrow(UserNotExistsException::new);
     }
 
 
-    @Transactional
     public void logout(LogoutRequestDto logoutRequestDto) {
+        String token = logoutRequestDto.getRefreshToken();
         //토큰 유효성 검증
-        jwtTokenUtil.validateRefreshToken(logoutRequestDto.getRefreshToken());
-        Optional<RefreshToken> optToken = refreshTokenRepository.findByToken(logoutRequestDto.getRefreshToken());
-        if (optToken.isEmpty()) {
-            throw new InvalidTokenException();
-        }
-        RefreshToken refreshToken = optToken.get();
-        refreshTokenRepository.delete(refreshToken);
+        jwtTokenUtil.validateRefreshToken(token);
+        redisTemplate.delete(RedisConstant.REFRESH_TOKEN_PREFIX + token);
     }
 
 
