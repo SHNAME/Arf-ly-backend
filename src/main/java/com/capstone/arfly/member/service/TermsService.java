@@ -7,12 +7,11 @@ import com.capstone.arfly.member.dto.LatestTermsResponseDto;
 import com.capstone.arfly.member.repository.MemberRepository;
 import com.capstone.arfly.member.repository.TermsRepository;
 import com.capstone.arfly.member.repository.UserTermsAgreementRepository;
+import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Comparator;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -29,19 +28,19 @@ public class TermsService {
                 .map(LatestTermsResponseDto::from)
                 .sorted(Comparator.comparing(LatestTermsResponseDto::getOrderIndex))
                 .toList();
-        return  response;
+        return response;
     }
 
     @Transactional(readOnly = true)
     public boolean hasAgreedToLatestTerms(Long memberId) {
-        memberRepository.findById(memberId).orElseThrow(() -> {throw new UserNotExistsException();});
+        memberRepository.findById(memberId).orElseThrow(() -> {
+            throw new UserNotExistsException();
+        });
 
         List<UserTermsAgreement> userTermsAgreements = userTermsAgreementRepository.findByMemberId(memberId);
-        //동의를 하지 않은 경우
-        if(userTermsAgreements == null || userTermsAgreements.isEmpty()){
-            return true;
+        if (userTermsAgreements == null || userTermsAgreements.isEmpty()) {
+            return false;
         }
-        //필수 약관을 동의한 경우
-        return false;
+        return true;
     }
 }

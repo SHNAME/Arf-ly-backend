@@ -52,7 +52,7 @@ public class TermsController {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "동의 여부 확인 성공 (true: 모두 동의 / false: 미동의 항목 존재)",
+                    description = "동의 여부 확인 성공 (true: 필수 항목에 동의 / false: 동의하지 않음)",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(implementation = Boolean.class)
