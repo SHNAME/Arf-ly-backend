@@ -4,19 +4,42 @@ import com.capstone.arfly.common.constant.S3DIRNAME;
 import com.capstone.arfly.common.domain.File;
 import com.capstone.arfly.common.domain.FileType;
 import com.capstone.arfly.common.dto.FileDetailDto;
-import com.capstone.arfly.common.exception.*;
+import com.capstone.arfly.common.exception.BusinessException;
+import com.capstone.arfly.common.exception.ErrorCode;
+import com.capstone.arfly.common.exception.InvalidMentionException;
+import com.capstone.arfly.common.exception.PostAuthorMisMatchException;
+import com.capstone.arfly.common.exception.PostNotFoundException;
+import com.capstone.arfly.common.exception.UserNotExistsException;
 import com.capstone.arfly.common.util.S3Uploader;
 import com.capstone.arfly.community.constant.LikeEventType;
 import com.capstone.arfly.community.domain.Comment;
 import com.capstone.arfly.community.domain.CommentMention;
 import com.capstone.arfly.community.domain.Post;
 import com.capstone.arfly.community.domain.PostImage;
-import com.capstone.arfly.community.dto.*;
+import com.capstone.arfly.community.dto.CommentDetailResponseDto;
+import com.capstone.arfly.community.dto.CommentRequestDto;
+import com.capstone.arfly.community.dto.PostCreateRequestDto;
+import com.capstone.arfly.community.dto.PostDetailFileDto;
+import com.capstone.arfly.community.dto.PostDetailResponseDto;
+import com.capstone.arfly.community.dto.PostListResponseDto;
+import com.capstone.arfly.community.dto.PostUpdateRequestDto;
 import com.capstone.arfly.community.event.CommentCreatedEvent;
 import com.capstone.arfly.community.event.PostLikeEvent;
-import com.capstone.arfly.community.repository.*;
+import com.capstone.arfly.community.repository.CommentMentionRepository;
+import com.capstone.arfly.community.repository.CommentRepository;
+import com.capstone.arfly.community.repository.PostImageRepository;
+import com.capstone.arfly.community.repository.PostLikeRepository;
+import com.capstone.arfly.community.repository.PostRepository;
 import com.capstone.arfly.member.domain.Member;
 import com.capstone.arfly.member.repository.MemberRepository;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,11 +49,6 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -57,7 +75,7 @@ public class PostService {
                     "  redis.call('INCR', KEYS[2]) " +
                     "  return 1 " +
                     "end";
-    private static final DefaultRedisScript<Long> script = new DefaultRedisScript<>(TOGGLE_LIKE_SCRIPT,Long.class);
+    private static final DefaultRedisScript<Long> script = new DefaultRedisScript<>(TOGGLE_LIKE_SCRIPT, Long.class);
 
 
     @Transactional
@@ -153,21 +171,20 @@ public class PostService {
     }
 
 
+    @Transactional
     public void toggleLike(Long postId, long userId) {
-       postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
         String countKey = "post:like:" + postId;
         String userSetKey = "post:like:users:" + postId;
 
-
         Long result = redisTemplate.execute(
-                script, List.of(userSetKey,countKey),
+                script, List.of(userSetKey, countKey),
                 String.valueOf(userId)
         );
-        if(result == 1L){
-            eventPublisher.publishEvent(new PostLikeEvent(this,postId,userId,LikeEventType.LIKE));
-        }
-        else{
-            eventPublisher.publishEvent(new PostLikeEvent(this,postId,userId,LikeEventType.CANCEL));
+        if (result == 1L) {
+            eventPublisher.publishEvent(new PostLikeEvent(this, postId, userId, LikeEventType.LIKE));
+        } else {
+            eventPublisher.publishEvent(new PostLikeEvent(this, postId, userId, LikeEventType.CANCEL));
         }
     }
 
@@ -231,16 +248,15 @@ public class PostService {
         }
     }
 
-
     // 게시글 좋아요 목록 불러오기(무한 스크롤 , 최신순, 좋아요순 정렬)
 
     // 일반 게시글 목록 조회 (검색어 없을 때)
     @Transactional(readOnly = true)
-    public PostListResponseDto getPosts(String sort, Long cursor, int size){
-        PageRequest pageRequest = PageRequest.of(0, size+1);
+    public PostListResponseDto getPosts(String sort, Long cursor, int size) {
+        PageRequest pageRequest = PageRequest.of(0, size + 1);
         List<Post> posts;
 
-        if("likes".equalsIgnoreCase(sort)){
+        if ("likes".equalsIgnoreCase(sort)) {
             Integer likesCursor = getLikesCursor(cursor);
             posts = postRepository.searchLikedPosts(null, cursor, likesCursor, pageRequest);
         } else {
@@ -248,21 +264,21 @@ public class PostService {
         }
 
         boolean hasNext = posts.size() > size;
-        if(hasNext){
+        if (hasNext) {
             posts.remove(size);
         }
-        Long nextCursor = posts.isEmpty() ? null : posts.get(posts.size()-1).getId();
+        Long nextCursor = posts.isEmpty() ? null : posts.get(posts.size() - 1).getId();
 
         return createPostListResponse(posts, hasNext, nextCursor, size, null);
     }
 
     // 검색 전용 API 로직 (검색어 있을 때)
     @Transactional(readOnly = true)
-    public PostListResponseDto searchPosts(String keyword, String sort, Long cursor, int size){
-        PageRequest pageRequest = PageRequest.of(0, size+1);
+    public PostListResponseDto searchPosts(String keyword, String sort, Long cursor, int size) {
+        PageRequest pageRequest = PageRequest.of(0, size + 1);
         List<Post> posts;
 
-        if("likes".equalsIgnoreCase(sort)){
+        if ("likes".equalsIgnoreCase(sort)) {
             Integer likesCursor = getLikesCursor(cursor);
             posts = postRepository.searchLikedPosts(keyword, cursor, likesCursor, pageRequest);
         } else {
@@ -270,10 +286,10 @@ public class PostService {
         }
 
         boolean hasNext = posts.size() > size;
-        if(hasNext){
+        if (hasNext) {
             posts.remove(size);
         }
-        Long nextCursor = posts.isEmpty() ? null : posts.get(posts.size()-1).getId();
+        Long nextCursor = posts.isEmpty() ? null : posts.get(posts.size() - 1).getId();
 
         // UI 시안의 "총 개수"를 위한 쿼리 (첫 페이지일 때만 계산)
         Long totalCount = (cursor == null) ? postRepository.countSearchResults(keyword) : null;
@@ -283,14 +299,17 @@ public class PostService {
 
     // 커서 ID를 통해 좋아요 수 찾기 헬퍼 메서드
     private Integer getLikesCursor(Long cursor) {
-        if (cursor == null) return null;
+        if (cursor == null) {
+            return null;
+        }
         return postRepository.findById(cursor)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND))
                 .getLikeCount();
     }
 
     // 공통 DTO 응답 생성 메서드
-    private PostListResponseDto createPostListResponse(List<Post> posts, boolean hasNext, Long nextCursor, int size, Long totalCount) {
+    private PostListResponseDto createPostListResponse(List<Post> posts, boolean hasNext, Long nextCursor, int size,
+                                                       Long totalCount) {
         List<PostImage> allPostImages = postImageRepository.findAllByPostInWithFile(posts);
 
         Map<Long, List<PostImage>> imageMap = allPostImages.stream()
