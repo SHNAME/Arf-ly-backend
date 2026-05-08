@@ -11,6 +11,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -23,20 +24,21 @@ public class PostLikeEventHandler {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void  handlePostLikeEvent(PostLikeEvent  postLikeEvent){
+    @Transactional
+    public void handlePostLikeEvent(PostLikeEvent postLikeEvent) {
         Optional<Post> optionalPost = postRepository.findById(postLikeEvent.getPostId());
-        if(optionalPost.isEmpty()){
+        if (optionalPost.isEmpty()) {
             return;
         }
         Post post = optionalPost.get();
         Member member = memberRepository.getReferenceById(postLikeEvent.getMemberId());
 
-        if(postLikeEvent.getLikeEventType().equals(LikeEventType.LIKE)){
+        if (postLikeEvent.getLikeEventType().equals(LikeEventType.LIKE)) {
             PostLike newPostLike = PostLike.builder().member(member).post(post).build();
             postLikeRepository.save(newPostLike);
             return;
         }
-        postLikeRepository.likeCancel(post.getId(),member.getId());
+        postLikeRepository.likeCancel(post.getId(), member.getId());
 
     }
 }
