@@ -1,3 +1,6 @@
+server:
+  forward-headers-strategy: native
+
 file:
   max-image-size: 50MB
 
