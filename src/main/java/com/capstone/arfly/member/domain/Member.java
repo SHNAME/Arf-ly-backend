@@ -35,7 +35,7 @@ public class Member {
     @Column(unique = true)
     private String phoneNumber;
 
-    @Column(unique = true)
+    @Column(unique = true, columnDefinition = "TEXT")
     private String firebaseUid;
 
     @Enumerated(EnumType.STRING)
@@ -67,10 +67,17 @@ public class Member {
     }
 
 
-    public void updateProfile(String nickName, Double latitude, Double longitude, String roadAddress, boolean notificationEnabled) {
-        if (nickName != null) this.nickName = nickName;
-        if (latitude != null) this.latitude = latitude;
-        if (longitude != null) this.longitude = longitude;
+    public void updateProfile(String nickName, Double latitude, Double longitude, String roadAddress,
+                              boolean notificationEnabled) {
+        if (nickName != null) {
+            this.nickName = nickName;
+        }
+        if (latitude != null) {
+            this.latitude = latitude;
+        }
+        if (longitude != null) {
+            this.longitude = longitude;
+        }
         this.road_address = roadAddress;
         this.notificationEnabled = notificationEnabled;
     }
