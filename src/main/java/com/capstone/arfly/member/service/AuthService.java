@@ -65,9 +65,10 @@ public class AuthService {
                 .firebaseUid(firebaseUid)
                 .phoneNumber(phoneNumber)
                 .build();
-        try{
+        try {
             memberRepository.saveAndFlush(member);
-        }catch (DataIntegrityViolationException e){
+        } catch (DataIntegrityViolationException e) {
+            log.error("login exception 발생 : {}", e.getMessage());
             throw new UserAlreadyExistsException();
         }
 
@@ -136,8 +137,8 @@ public class AuthService {
         //토큰 유효성 검증
         jwtTokenUtil.validateRefreshToken(token);
 
-        String memberId = redisTemplate.opsForValue().get(RedisConstant.REFRESH_TOKEN_PREFIX  + token);
-        if(memberId == null){
+        String memberId = redisTemplate.opsForValue().get(RedisConstant.REFRESH_TOKEN_PREFIX + token);
+        if (memberId == null) {
             throw new InvalidTokenException();
         }
         return memberRepository.findById(Long.parseLong(memberId)).orElseThrow(UserNotExistsException::new);
@@ -189,30 +190,30 @@ public class AuthService {
     public Member findUserId(PhoneAuthInfoDto phoneAuthInfoDto) {
         Optional<Member> findMember = memberRepository.findByFirebaseUidAndPhoneNumber(
                 phoneAuthInfoDto.getUid(), phoneAuthInfoDto.getPhoneNumber());
-        if(findMember.isEmpty()){
+        if (findMember.isEmpty()) {
             throw new UserNotExistsException();
         }
         return findMember.get();
     }
 
     @Transactional(readOnly = true)
-    public Member authenticateUserForPasswordReset(PhoneAuthInfoDto phoneAuthInfoDto, String userId){
+    public Member authenticateUserForPasswordReset(PhoneAuthInfoDto phoneAuthInfoDto, String userId) {
         Optional<Member> findMember = memberRepository.findByFirebaseUidAndPhoneNumber(
                 phoneAuthInfoDto.getUid(), phoneAuthInfoDto.getPhoneNumber());
-        if(findMember.isEmpty()){
+        if (findMember.isEmpty()) {
             throw new UserNotExistsException();
         }
         Member member = findMember.get();
-        if(!member.getUserId().equals(userId)){
+        if (!member.getUserId().equals(userId)) {
             throw new UserIdentityMismatchException();
         }
         return member;
     }
 
     @Transactional
-    public void resetPassword(Long id, String newPassword){
+    public void resetPassword(Long id, String newPassword) {
         Optional<Member> findMember = memberRepository.findById(id);
-        if(findMember.isEmpty()){
+        if (findMember.isEmpty()) {
             throw new UserNotExistsException();
         }
         Member member = findMember.get();
